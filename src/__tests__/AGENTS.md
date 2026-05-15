@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-Vitest 4.1.4 suite colocated under `src/__tests__/` (non-standard, kept inside `src/` for path alias parity). 2100 tests across 80 files, 16 skipped for known gaps. Coverage gates (effective): branches 90%, functions 60%, lines 65%, statements 65%. Note: `vitest.config.ts` declares duplicate threshold keys; the second set overrides — these are the values CI enforces.
+Vitest 4.1.x suite colocated under `src/__tests__/` (non-standard, kept inside `src/` for path alias parity). ~85 test files; README/counts may lag actual glob results. Coverage gates (effective): branches 90%, functions 60%, lines 65%, statements 65%. Note: `vitest.config.ts` declares duplicate threshold keys; the second set overrides — these are the values CI enforces.
 
 ## STRUCTURE
 
@@ -20,6 +20,8 @@ compression/     CompressionAutoTrigger
 eval/fixtures/   scenarios.ts (10 canonical eval scenarios)
 ```
 
+`eval/totVsSequential.eval.ts` is not CI-gated; run it explicitly with `RUN_EVAL=1 npm test`.
+
 ## CONVENTIONS
 
 - **Mirror layout**: new test file path = source path with `__tests__/` inserted after `src/`.
@@ -32,6 +34,13 @@ eval/fixtures/   scenarios.ts (10 canonical eval scenarios)
 - **One concern per `it`**. Group by behavior, not by method name.
 - **Skipped tests** (`it.skip`) need a comment explaining the gap.
 - **Async cleanup**: `await` shutdowns in `afterEach` to avoid leaking timers across files.
+
+## SKIPS / KNOWN GAPS
+
+- `sse-transport.test.ts`: custom SSE path case is skipped; custom path behavior is not implemented.
+- `integration/dag-edges.test.ts`: conditional SQLite/persistence restart cases skip when SQLite is unavailable.
+- `integration/CompressionPersistence.test.ts`: compression persistence variants use `skipIf` for unavailable backend combinations.
+- Keep skip comments local to the skipped `it`/`describe`; do not add silent `skipIf` gates.
 
 ## HELPERS
 

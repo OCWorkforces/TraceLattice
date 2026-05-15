@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
 **Updated:** 2026-05-15
-**Commit:** 78aca54 docs(agents): update AGENTS.md files for new subsystems
+**Commit:** 0940891
 **Branch:** feat/rslib-rsbuild-migration
 
 ## OVERVIEW
@@ -23,7 +23,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 │   ├── di/               # DI container + service registry (18 services)
 │   ├── registry/         # Tool/Skill registries (BaseRegistry<T> + subclasses)
 │   ├── contracts/        # Shared interfaces (IMetrics, IDiscoveryCache, etc.)
-│   ├── __tests__/        # Test suite (Vitest, 2100 tests, 80 files)
+│   ├── __tests__/        # Test suite (Vitest, ~85 files; colocated under src)
 │   ├── cache/            # LRU+TTL discovery cache
 │   ├── logger/           # Structured logging (JSON/pretty)
 │   ├── pool/             # Multi-user session pool
@@ -60,7 +60,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 | **Strategy Selection**   | `src/core/reasoning/strategies/` | Sequential vs Tree-of-Thought (BFS/beam) dispatch via StrategyFactory |
 | **Calibrated Evaluation**| `src/core/evaluator/`          | Decomposed signals/stats/patterns + Beta(2,2) calibration (Brier, ECE) |
 | **Tool Interleave**     | `src/core/tools/`              | Suspend/resume flow: ThoughtProcessor suspends on tool_call, LLM resumes via token |
-|| **Outcome Recording**   | `src/core/reasoning/OutcomeRecorder.ts`   | Records VerificationOutcome per-session for calibration when outcomeRecording flag on |
+| **Outcome Recording**   | `src/core/reasoning/OutcomeRecorder.ts`   | Records VerificationOutcome per-session for calibration when outcomeRecording flag on |
 
 ## CODE MAP
 
@@ -71,11 +71,11 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 | `initializeServer`                  | function  | src/lib.ts                               | Convenience factory with config + logger + watchers                                  |
 | `HistoryManager`                    | class     | src/core/HistoryManager.ts               | Coordinates history + branching + session partitioning. Delegates to EdgeEmitter, PersistenceBuffer, SessionManager. Ownership enforced on all mutating methods including `clear()`. TTL eviction (30min), LRU (100 max). |
 | `IHistoryManager`                   | interface | src/core/IHistoryManager.ts              | History manager contract (8 methods + session lifecycle)                                                 |
-| `ThoughtProcessor` | class | src/core/ThoughtProcessor.ts | Validate → normalize → persist → format → evaluate → strategy → hints pipeline (798L) |
+| `ThoughtProcessor` | class | src/core/ThoughtProcessor.ts | Normalize → validate → persist → format → evaluate → strategy → hints pipeline (806L) |
 | `ThoughtEvaluator` | class | src/core/ThoughtEvaluator.ts | Stateless quality signals + reasoning analytics (150L) |
 | `normalizeInput`                    | function  | src/core/InputNormalizer.ts              | Field correction, default filling, sanitization of `branch_id`, step-level urgency phrase stripping (460L) |
 | `ThoughtFormatter` | class | src/core/ThoughtFormatter.ts | Chalk display: 💭🔄🌿🔬✅🔍🧬🧠📝 (264L) |
-| `ThoughtData` | interface | src/core/thought.ts | Core data structure with 11 optional reasoning fields + `retracted` boolean. Now derived from `v.InferOutput<SequentialThinkingSchema>` (single source of truth). (262L) |
+| `ThoughtData` | interface | src/core/thought.ts | Core data structure with reasoning fields + `retracted` boolean. Derived from `v.InferOutput<SequentialThinkingSchema>` (single source of truth). |
 | `ThoughtType`                       | union     | src/core/reasoning.ts                    | `'regular'\|'hypothesis'\|'verification'\|'critique'\|'synthesis'\|'meta'\|'tool_call'\|'tool_observation'\|'assumption'\|'decomposition'\|'backtrack'` |
 | `ConfidenceSignals`                 | interface | src/core/reasoning.ts                    | Computed quality indicators (depth, revision count, type distribution)               |
 | `ReasoningStats`                    | interface | src/core/reasoning.ts                    | Aggregated session analytics (totals, hypothesis chains, averages)                   |
@@ -133,7 +133,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 | `GLOBAL_SESSION_ID`                | constant  | src/contracts/ids.ts                     | Branded `SessionId` constant replacing literal `'__global__'` for stdio/global session path. |
 | `ValidatedThought`                 | union     | src/core/thought.ts                      | Discriminated union over 7 thought-type variants for exhaustive type-narrowed handling. |
 | `assertNever`                      | function  | src/utils.ts                             | Exhaustiveness helper: throws on unreachable union branches. |
-| `FeatureFlags`                     | interface | src/contracts/features.ts                | 7 readonly feature flags (dagEdges, reasoningStrategy, calibration, compression, toolInterleave, newThoughtTypes, outcomeRecording). Feature flags gate write paths only; EdgeStore always registered in DI. |
+| `FeatureFlags`                     | interface | src/contracts/features.ts                | 7 readonly feature flags (dagEdges, reasoningStrategy, calibration, compression, toolInterleave, newThoughtTypes, outcomeRecording). `ServerConfig.validateFeatures()` defaults booleans to `true`; env docs default them off. Feature flags gate write paths only; stores stay registered in DI. |
 | `ITransport`                       | interface | src/contracts/transport.ts               | Shared transport lifecycle: `kind`, `connect`, `stop`, `clientCount`, `isShuttingDown`, `serverUrl`. |
 | `stripUrgencyPhrases`              | function  | src/sanitize.ts                          | Strips urgency/imperative phrases (URGENT, IMMEDIATELY, etc.) from strings to prevent prompt injection. Used by `sanitizeRationale` and `sanitizeStepField`. |
 | `sanitizeStepField`                | function  | src/sanitize.ts                          | Sanitizes step-level fields (`step_description`, `expected_outcome`, `meta_observation`, `next_step_conditions`). Combines `sanitizeString` + `stripUrgencyPhrases` + 4000-char cap. |
@@ -154,7 +154,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 - **Unused params `_`**: ESLint `argsIgnorePattern: '^_'`.
 - **JSDoc**: All public APIs have full TSDoc with `@example`, `@param`, `@returns`.
 - **Session Isolation & Ownership**: `session_id` on ThoughtData scopes history, branches, and stats to isolated sessions. Omit for backward-compatible global behavior. `reset_state: true` clears session before processing. All mutating methods (including `clear()`/`clearSession()`) enforce ownership via `_getSession()`, throwing `SessionAccessDeniedError` on cross-owner access. Stdio path (no owner) is unrestricted.
-- **Feature Flags**: 7 flags (dagEdges, reasoningStrategy `'sequential'\|'tot'`, calibration, compression, toolInterleave, newThoughtTypes, outcomeRecording). All default off (reasoningStrategy defaults to `sequential`). Env vars: `TRACELATTICE_FEATURES_*`. Flag gates write path only; EdgeStore always registered in DI.
+- **Feature Flags**: 7 flags (dagEdges, reasoningStrategy `'sequential'\|'tot'`, calibration, compression, toolInterleave, newThoughtTypes, outcomeRecording). `ServerConfig.validateFeatures()` defaults booleans to `true` and strategy to `sequential`; README/env variables document off-by-default env opt-ins. Env vars: `TRACELATTICE_FEATURES_*`. Flags gate write paths only; stores stay registered in DI.
 - **Strategy Purity**: `IReasoningStrategy` implementations are pure policies. No mutable state, no I/O. Decisions derived from `StrategyContext` (graph snapshot + history).
 
 ## ANTI-PATTERNS (THIS PROJECT)
@@ -170,14 +170,18 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 - **Max function 100 lines**: Function length limit (enforced by sentrux).
 - **No `as SessionId` casts**: Use `asSessionId()` from `contracts/ids.ts` for validated branding. The only exceptions are inside `asSessionId()` itself, suppressed with `eslint-disable`. (ESLint `no-restricted-syntax` enforced).
 - **No inline `import()` types**: Use top-level `import type { … }` statements instead of inline `import('module').Type` annotations. (ESLint `consistent-type-imports` enforced).
+- **Forbidden sentrux boundaries**: `transport→core`, `transport→registry`, `watchers→persistence`, `cluster→registry`, `persistence→transport`, `registry→core/HistoryManager.ts`.
+
 ## SETUP NOTES
 
 - **CI**: `.github/workflows/ci.yml` — Node 22.x + 24.x matrix. Hard gates: type-check, test+coverage, build. Soft gates (continue-on-error): lint, audit.
-- **Coverage**: ~2100 tests (80 files, 16 skipped). Thresholds: branches 90%, functions 60%, lines 65%, statements 65%.
+- **CD**: `.github/workflows/cd.yml` — main branch only; build + test, skip publish if version already exists, then npm publish with provenance, tag `v<version>`, GitHub release.
+- **Coverage**: Vitest config uses duplicate threshold keys; effective thresholds are branches 90%, functions 60%, lines 65%, statements 65%.
 - **Test Helpers**: `src/__tests__/helpers/factories.ts` — `createTestThought()`, `MockHistoryManager`. `src/__tests__/helpers/timers.ts` — timer helpers.
-- **Large Files**: `errors.ts` (829L), `ThoughtProcessor.ts` (798L), `schema.ts` (724L), `StreamableHttpTransport.ts` (712L), `lib.ts` (659L), `HistoryManager.ts` (572L), `ServerConfig.ts` (517L), `SseTransport.ts` (485L), `ConnectionPool.ts` (466L), `metrics.impl.ts` (470L).
+- **Large Files**: `errors.ts` (832L), `ThoughtProcessor.ts` (806L), `schema.ts` (727L), `StreamableHttpTransport.ts` (729L), `lib.ts` (656L), `HistoryManager.ts` (573L), `ServerConfig.ts` (517L), `SqlitePersistence.ts` (507L), `SseTransport.ts` (496L), `ConnectionPool.ts` (467L).
 - **Architectural Layers**: `.sentrux/rules.toml` — 9 layers (types→crosscutting→config→core→domain→infrastructure→di→app→cli), 6 forbidden boundaries.
 - **Duplicate env files**: Both `.env.example` (minimal) and `.example.env` (full) exist — non-standard.
+- **Build split**: `rslib` emits `dist/lib.js`; `rsbuild` bundles `src/cli.ts` but externalizes `./lib.js`; `scripts/postbuild-cli.mjs` injects `#!/usr/bin/env bun` and chmods `dist/cli.js`.
 
 ## COMMANDS
 
