@@ -1,6 +1,6 @@
 # PERSISTENCE MODULE
 
-**Updated:** 2026-04-29
+**Updated:** 2026-05-15
 **Parent:** ../AGENTS.md
 
 ## OVERVIEW
@@ -16,7 +16,7 @@ persistence/
 ├── MemoryPersistence.ts    # In-memory (default, tests)
 ├── FilePersistence.ts      # JSON files (452L)
 ├── SqlitePersistence.ts    # SQLite + WAL (468L)
-├── types.ts                # Shared persistence types
+├── types.ts                # `PersistenceConfig` + backend option shapes (path, WAL mode, etc.)
 └── better-sqlite3.d.ts     # Type shim
 ```
 

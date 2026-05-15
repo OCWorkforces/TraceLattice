@@ -24,7 +24,7 @@ Reasoning engine: thought ingest → graph mutation → quality signals → stra
 | `compression/`   | Branch rollup (`CompressionService`) plus sliding-window `DehydrationPolicy` |
 | `evaluator/`     | Decomposed: `SignalComputer`, `Aggregator`, `PatternDetector`, `Calibrator` (own AGENTS.md) |
 | `tools/`         | `InMemorySuspensionStore`: suspend/resume on `tool_call`, TTL expiry, periodic sweep |
-| `reasoning/strategies/` | Pure policies. No I/O, no mutable state. Decisions from `StrategyContext` only |
+| `reasoning/`          | `OutcomeRecorder`: per-session outcome recording for calibration (own AGENTS.md). `strategies/` subdir has own AGENTS.md |
 
 ## WHERE TO LOOK
 
@@ -38,6 +38,7 @@ Reasoning engine: thought ingest → graph mutation → quality signals → stra
 | Session eviction              | `SessionManager` (TTL 30min, LRU 100) |
 | Batched writes                | `PersistenceBuffer` (flush timer)     |
 | New reasoning strategy        | `reasoning/strategies/` + `StrategyFactory` dispatch |
+| Outcome recording             | `reasoning/OutcomeRecorder.ts` (no-op when `outcomeRecording` flag off) |
 | Branch collapse               | `compression/CompressionService.ts`   |
 | Sanitization of step fields   | `InputNormalizer.ts` (uses `sanitizeStepField` from `sanitize.ts`) |
 
@@ -55,9 +56,9 @@ Reasoning engine: thought ingest → graph mutation → quality signals → stra
 
 ## NOTES
 
-- `HistoryManager` was decomposed (538L). Mutation logic lives in `EdgeEmitter` / `PersistenceBuffer` / `SessionManager`. Keep it that way: HM coordinates, doesn't compute.
+- `HistoryManager` was decomposed (572L). Mutation logic lives in `EdgeEmitter` / `PersistenceBuffer` / `SessionManager`. Keep it that way: HM coordinates, doesn't compute.
 - `_resolveThoughtId` walks BOTH `session.thought_history` AND every `session.branches[*]`. Branch thoughts are NOT in main history.
-- `ThoughtProcessor` is 754L because it's the seam between schema, persistence, and policy. Don't fold helpers back in. Extract further if it grows.
+- `ThoughtProcessor` is 798L because it's the seam between schema, persistence, and policy. Don't fold helpers back in. Extract further if it grows.
 - `EdgeStore` is always registered in DI. Feature flag `dagEdges` gates the WRITE path only, not the registration.
 - `reasoning/strategies/` lives at depth 4 deliberately. Strategies are leaf policies, not infrastructure.
 - `generateUlid` is timestamp-base36 + random hex. Not a real ULID. Don't rename.
@@ -65,4 +66,4 @@ Reasoning engine: thought ingest → graph mutation → quality signals → stra
 - Input sanitization has two layers: `sanitizeStepField` (urgency phrases + HTML + control chars + length cap) for step-level and reasoning fields, and `sanitizeRationale` (same + 2000-char cap) for tool/skill recommendation rationales. Both use `stripUrgencyPhrases` internally.
 - `_validateNewTypes` returns a `ValidatedThought` discriminated union — `_handleToolCall` / `_handleToolObservation` / backtrack handlers consume the narrowed variant directly. No more `!` assertions in processor branches.
 - `_hintCooldowns` is typed `Map<SessionId, Map<PatternName, number>>` (inner key is `PatternName` from `reasoning.ts`, not raw string).
-- `GLOBAL_SESSION_ID` constant (in `SessionManager` / id helpers) replaces the `'__global__'` literal previously sprinkled across session code. Always use the constant.
+- `GLOBAL_SESSION_ID` constant (in `contracts/ids.ts`) replaces the `'__global__'` literal previously sprinkled across session code. Always use the constant.
