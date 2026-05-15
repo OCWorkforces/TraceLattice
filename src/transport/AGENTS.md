@@ -38,10 +38,6 @@ Stateless JSON-RPC 2.0 over HTTP. Pipeline: rate limit → CORS → body size �
 - Host header allowlist (`ALLOWED_HOSTS`)
 - Query param sanitization, path traversal prevention, request size caps
 - JSON-RPC parsing via `safeParse(JsonRpcRequestSchema, rawBody)` (valibot) — never raw `JSON.parse(...) as unknown`
-- Rate limiting (100 req/min per-IP, `X-Forwarded-For` aware)
-- CORS preflight + headers
-- Session ID validation, query sanitization
-- Path traversal prevention, request size caps
 
 ## NOTES
 

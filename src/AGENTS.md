@@ -1,6 +1,6 @@
 # SRC
 
-**Updated:** 2026-04-29 | **Parent:** ../AGENTS.md
+**Updated:** 2026-05-15 | **Parent:** ../AGENTS.md
 
 ## OVERVIEW
 
@@ -59,7 +59,7 @@ src/
 - **`lib.ts` is the orchestration hub**: All 18 DI services registered here. New subsystems touch `lib.ts` + `di/ServiceRegistry.ts`.
 - **No barrels**: Submodules import direct file paths with `.js` ESM extensions.
 - **Feature flags gate write paths only**: e.g. `EdgeStore` always registered in DI even when `dagEdges` flag off. Read paths stay safe.
-- **Subdirs with own AGENTS.md** (read first before navigating): `core/`, `core/evaluator/`, `transport/`, `persistence/`, `contracts/`, `__tests__/`.
+- **Subdirs with own AGENTS.md** (read first before navigating): `core/`, `core/evaluator/`, `core/tools/`, `core/reasoning/`, `transport/`, `persistence/`, `contracts/`, `__tests__/`.
 - **Coupling rule**: Cross-module type imports go through `contracts/`. Exceptions: `IHistoryManager` and `ThoughtData` live in `core/` (domain primitives).
 - **Layered**: 9 layers in `.sentrux/rules.toml` (types → crosscutting → config → core → domain → infrastructure → di → app → cli). 6 forbidden boundaries.
 - **Large files**: `errors.ts` (829L), `schema.ts` (724L), `lib.ts` (659L), `ServerConfig.ts` (517L). Split cautiously; risk public API churn.

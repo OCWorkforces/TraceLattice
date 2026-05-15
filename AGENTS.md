@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Updated:** 2026-05-04
-**Commit:** 7b3daab fix(types): brand MemoryPersistence Map keys, missed in typing commit
+**Updated:** 2026-05-15
+**Commit:** 78aca54 docs(agents): update AGENTS.md files for new subsystems
 **Branch:** feat/rslib-rsbuild-migration
 
 ## OVERVIEW
@@ -60,7 +60,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 | **Strategy Selection**   | `src/core/reasoning/strategies/` | Sequential vs Tree-of-Thought (BFS/beam) dispatch via StrategyFactory |
 | **Calibrated Evaluation**| `src/core/evaluator/`          | Decomposed signals/stats/patterns + Beta(2,2) calibration (Brier, ECE) |
 | **Tool Interleave**     | `src/core/tools/`              | Suspend/resume flow: ThoughtProcessor suspends on tool_call, LLM resumes via token |
-| **Outcome Recording**   | `src/core/HistoryManager.ts`   | Records tool_call/tool_observation outcomes with metadata when outcomeRecording flag on |
+|| **Outcome Recording**   | `src/core/reasoning/OutcomeRecorder.ts`   | Records VerificationOutcome per-session for calibration when outcomeRecording flag on |
 
 ## CODE MAP
 
@@ -173,7 +173,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 ## SETUP NOTES
 
 - **CI**: `.github/workflows/ci.yml` — Node 22.x + 24.x matrix. Hard gates: type-check, test+coverage, build. Soft gates (continue-on-error): lint, audit.
-- **Coverage**: 2100 tests (80 files, 16 skipped). Thresholds: branches 90%, functions 60%, lines 65%, statements 65%.
+- **Coverage**: ~2100 tests (80 files, 16 skipped). Thresholds: branches 90%, functions 60%, lines 65%, statements 65%.
 - **Test Helpers**: `src/__tests__/helpers/factories.ts` — `createTestThought()`, `MockHistoryManager`. `src/__tests__/helpers/timers.ts` — timer helpers.
 - **Large Files**: `errors.ts` (829L), `ThoughtProcessor.ts` (798L), `schema.ts` (724L), `StreamableHttpTransport.ts` (712L), `lib.ts` (659L), `HistoryManager.ts` (572L), `ServerConfig.ts` (517L), `SseTransport.ts` (485L), `ConnectionPool.ts` (466L), `metrics.impl.ts` (470L).
 - **Architectural Layers**: `.sentrux/rules.toml` — 9 layers (types→crosscutting→config→core→domain→infrastructure→di→app→cli), 6 forbidden boundaries.
