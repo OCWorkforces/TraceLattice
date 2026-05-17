@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-Vitest 4.1.x suite colocated under `src/__tests__/` (non-standard, kept inside `src/` for path alias parity). ~85 test files; README/counts may lag actual glob results. Coverage gates (effective): branches 90%, functions 60%, lines 65%, statements 65%. Note: `vitest.config.ts` declares duplicate threshold keys; the second set overrides — these are the values CI enforces.
+Vitest 4.1.x suite colocated under `src/__tests__/` (non-standard, kept inside `src/` for path alias parity). 86 test files; README/counts may lag actual glob results. Coverage gates (effective): branches 90%, functions 60%, lines 65%, statements 65%. Note: `vitest.config.ts` declares duplicate threshold keys; the second set overrides — these are the values CI enforces.
 
 ## STRUCTURE
 

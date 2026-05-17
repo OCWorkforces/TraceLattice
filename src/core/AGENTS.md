@@ -67,3 +67,4 @@ Reasoning engine: thought ingest → graph mutation → quality signals → stra
 - `_validateNewTypes` returns a `ValidatedThought` discriminated union — `_handleToolCall` / `_handleToolObservation` / backtrack handlers consume the narrowed variant directly. No more `!` assertions in processor branches.
 - `_hintCooldowns` is typed `Map<SessionId, Map<PatternName, number>>` (inner key is `PatternName` from `reasoning.ts`, not raw string).
 - `GLOBAL_SESSION_ID` constant (in `contracts/ids.ts`) replaces the `'__global__'` literal previously sprinkled across session code. Always use the constant.
+- `SessionLock` (`src/core/SessionLock.ts`): per-session concurrency primitive. Registered in DI as `sessionLock: ISessionLock` (19th service). `@internal` — never inject outside of `HistoryManager`.

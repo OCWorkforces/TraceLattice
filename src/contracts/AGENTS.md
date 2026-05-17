@@ -1,6 +1,6 @@
 # CONTRACTS MODULE
 
-**Updated:** 2026-05-04
+**Updated:** 2026-05-17
 **Parent:** ../AGENTS.md
 
 ## OVERVIEW
@@ -10,8 +10,8 @@ Shared interface contracts. Single coupling point for cross-module type imports 
 ## INTERFACES
 
 | File | Exports |
-|------|---------|
-| `interfaces.ts` | `IMetrics`, `IDiscoveryCache`, `DiscoveryCacheOptions`, `IEdgeStore`, `IPersistenceBackend` |
+|------|---------||
+| `interfaces.ts` | `IMetrics`, `IDiscoveryCache`, `DiscoveryCacheOptions`, `IEdgeStore`, `IOutcomeRecorder`, `IToolRegistry`, `ISessionLock`, `VerificationOutcome` |
 | `strategy.ts` | `IReasoningStrategy`, `StrategyContext`, `StrategyDecision` |
 | `summary.ts` | `ISummaryStore`, `Summary` |
 | `calibrator.ts` | `ICalibrator`, `CalibrationMetrics`, `CalibrationResult` |
@@ -19,15 +19,18 @@ Shared interface contracts. Single coupling point for cross-module type imports 
 | `ids.ts` | `SessionId`, `ThoughtId`, `EdgeId`, `SuspensionToken`, `BranchId`, `SummaryId` (branded types) + validated constructors (`asSessionId()`, `asBranchId()` etc.) + unchecked constructors (`asThoughtId()`, `asEdgeId()`, `asSuspensionToken()`, `asSummaryId()`) + generators + `GLOBAL_SESSION_ID` constant |
 | `features.ts` | `FeatureFlags`, `DEFAULT_FLAGS`, `hasFeature()` type guard |
 | `transport.ts` | `ITransport`, `TransportKind` |
+| `PersistenceBackend.ts` | `PersistenceBackend` (13 methods), `PersistenceConfig` |
 
 Key contracts:
 - `IEdgeStore` (7 methods): `addEdge`, `getEdge`, `outgoing`, `incoming`, `edgesForSession`, `clearSession`, `size`
 - `IReasoningStrategy`: pure policy, `decideNext(ctx) → StrategyDecision`, no mutable state, no I/O
 - `ISuspensionStore` (8 methods): `suspend`, `resume`, `peek`, `expire`, `clearSession`, `size`, `start`, `stop`
+- `ISessionLock`: per-session concurrency lock (`@internal`; registered in DI as `sessionLock`)
 - `FeatureFlags`: 7 readonly flags + `DEFAULT_FLAGS` + `hasFeature()` type guard, re-exported from `ServerConfig.ts`
 - `ITransport`: shared transport lifecycle (`kind`, `connect`, `stop`, `clientCount`, `isShuttingDown`, `serverUrl`)
 - `GLOBAL_SESSION_ID`: replaces literal `'__global__'` string everywhere
 
+- `ISessionLock` (2 methods): `acquire(sessionId) → Promise<ISessionLockHandle>`, `release(handle)` — per-session concurrency control. `@internal` — do not use outside DI-wired code.
 ## RULES
 
 - ALL cross-module type imports MUST route through this directory.

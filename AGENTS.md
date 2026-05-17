@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Updated:** 2026-05-15
-**Commit:** 0940891
+**Updated:** 2026-05-17
+**Commit:** c6871c5
 **Branch:** feat/rslib-rsbuild-migration
 
 ## OVERVIEW
@@ -20,7 +20,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 │   │   ├── tools/         # Tool interleave: InMemorySuspensionStore (suspend/resume)
 │   │   └── reasoning/    # Strategies: Sequential, TreeOfThought (BFS/beam), StrategyFactory
 │   ├── transport/        # MCP transports (SSE/HTTP/StreamableHTTP)
-│   ├── di/               # DI container + service registry (18 services)
+│   ├── di/               # DI container + service registry (19 services)
 │   ├── registry/         # Tool/Skill registries (BaseRegistry<T> + subclasses)
 │   ├── contracts/        # Shared interfaces (IMetrics, IDiscoveryCache, etc.)
 │   ├── __tests__/        # Test suite (Vitest, ~85 files; colocated under src)
@@ -88,7 +88,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 | `SseTransport`                      | class     | src/transport/SseTransport.ts            | SSE transport for multi-user streaming                                               |
 | `HttpTransport`                     | class     | src/transport/HttpTransport.ts           | HTTP JSON-RPC transport (stateless)                                                  |
 | `DIContainer`                       | class     | src/di/Container.ts                      | IoC container (singleton/transient/lazy, circular detection). `resolveDynamic(name)` escape hatch replaces deprecated `resolve<T>(string)` overload. |
-| `ServiceRegistry`                   | interface | src/di/ServiceRegistry.ts                | Typed service key map (18 services: `ToolRegistry: ToolRegistry` concrete; includes EdgeStore, reasoningStrategy, outcomeRecorder, calibrator, summaryStore, compressionService, suspensionStore) |
+| `ServiceRegistry`                   | interface | src/di/ServiceRegistry.ts                | Typed service key map (19 services: `ToolRegistry: ToolRegistry` concrete; includes EdgeStore, reasoningStrategy, outcomeRecorder, calibrator, summaryStore, compressionService, suspensionStore, sessionLock) |
 | `DiscoveryCache`                    | class     | src/cache/DiscoveryCache.ts              | LRU+TTL cache (TTL 300s, max 100 entries)                                            |
 | `Metrics`                           | class     | src/metrics/Metrics.impl.ts              | Prometheus counters, gauges, histograms                                              |
 | `ConfigLoader`                      | class     | src/config/ConfigLoader.ts               | YAML + env var config (env > project > user > defaults)                              |
@@ -142,7 +142,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 
 - **Async-First**: All I/O and discovery is async.
 - **Factory Pattern**: `createServer()`, `createPersistenceBackend()`, `createStreamableHttpTransport()` etc.
-- **DI**: Inject via `src/di` container; typed via `ServiceRegistry` (18 keys); no global state.
+- **DI**: Inject via `src/di` container; typed via `ServiceRegistry` (19 keys); no global state.
 - **Error Handling**: `SequentialThinkingError` hierarchy (20 subclasses + `ValidationError` with `field`); never swallow.
 - **Contracts Module**: Cross-module type imports go through `src/contracts/` — single coupling point. `IHistoryManager` + `ThoughtData` live in `src/core/`.
 - **No Barrels**: Submodules import directly from source files. No barrel re-exports anywhere.

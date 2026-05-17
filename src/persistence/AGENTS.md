@@ -11,7 +11,7 @@ State backends for thoughts + DAG edges. 3 implementations behind one interface,
 
 ```
 persistence/
-├── PersistenceBackend.ts   # 15-method interface (116L)
+├── PersistenceBackend.ts   # 13-method interface (116L)
 ├── PersistenceFactory.ts   # Backend selector
 ├── MemoryPersistence.ts    # In-memory (default, tests)
 ├── FilePersistence.ts      # JSON files (452L)
@@ -30,7 +30,10 @@ persistence/
 
 ## INTERFACE
 
-`PersistenceBackend` — 15 methods. Edge-related:
+`PersistenceBackend` — 13 methods. Full interface:
+- `saveThought`, `loadHistory`, `saveBranch`, `loadBranch`, `listBranches`, `healthy`, `clear`, `close` (8 core)
+- `saveEdges(sessionId, edges)`, `loadEdges(sessionId)`, `listEdgeSessions()` (3 edge methods)
+- `saveSummaries(sessionId, summaries)`, `loadSummaries(sessionId)` (2 summary methods)
 
 - `saveEdges(sessionId, edges): Promise<void>` — per-session write
 - `loadEdges(sessionId): Promise<Edge[]>` — per-session read
