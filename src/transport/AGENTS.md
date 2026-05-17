@@ -1,6 +1,6 @@
 # TRANSPORT MODULE
 
-**Updated:** 2026-04-29
+**Updated:** 2026-05-17
 **Parent:** ../AGENTS.md
 
 ## OVERVIEW
@@ -24,11 +24,22 @@ src/transport/
 Production MCP transport (replaced SSE as of MCP spec March 2025). Dual mode: stateful (per-client `SessionState` keyed by `Mcp-Session-Id` header) or stateless. Request streaming, graceful shutdown, session reaper.
 
 ### SseTransport (legacy)
-Server-Sent Events for multi-user streaming. `Set<ServerResponse>` connection pool, message queue for late joiners, auto client IDs. Endpoints: `GET {path}` (SSE), `POST {path}/message`, `GET /health`.
+Server-Sent Events for multi-user streaming. `Set<ServerResponse>` connection pool, message queue for late joiners, auto client IDs. Endpoints: `GET /sse` (SSE stream), `POST /sse/message` (send), `GET /health`. Session via `?session=` or `?sessionId=` query param.
 
 ### HttpTransport (simplest)
 Stateless JSON-RPC 2.0 over HTTP. Pipeline: rate limit → CORS → body size → schema → delegate. Body limit 10MB, 30s timeout.
 
+## ENDPOINTS
+
+| Transport | Method | Path | Notes |
+|-----------|--------|------|-------|
+| StreamableHTTP | POST/GET | `/mcp` | Stateful: `Mcp-Session-Id` header required after init |
+| StreamableHTTP | GET | `/health`, `/ready`, `/metrics` | Health/readiness/Prometheus |
+| SSE | GET | `/sse` | SSE stream (long-lived) |
+| SSE | POST | `/sse/message` | Client→server messages |
+| SSE | GET | `/health`, `/ready` | Health/readiness |
+| HTTP | POST | `/messages` | Stateless JSON-RPC 2.0 |
+| HTTP | GET | `/health`, `/ready`, `/metrics` | Health/readiness/Prometheus |
 ## SHARED BASE
 
 `BaseTransport` provides cross-cutting security:
