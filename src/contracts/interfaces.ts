@@ -11,8 +11,8 @@
  * @module contracts
  */
 import type { Edge } from '../core/graph/Edge.js';
-import type { ThoughtType } from '../core/reasoning.js';
 import type { EdgeId, SessionId, ThoughtId } from './ids.js';
+import type { ThoughtType } from './reasoning-types.js';
 
 /**
  * Metrics interface for observability.

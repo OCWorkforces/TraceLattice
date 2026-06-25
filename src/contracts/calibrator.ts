@@ -7,8 +7,8 @@
  * @module contracts/calibrator
  */
 
-import type { ThoughtType } from '../core/reasoning.js';
 import type { SessionId } from './ids.js';
+import type { ThoughtType } from './reasoning-types.js';
 
 /**
  * Aggregate calibration quality metrics for a session (or globally).
