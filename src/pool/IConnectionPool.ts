@@ -11,7 +11,29 @@
 import type { ThoughtData } from '../core/thought.js';
 import type { SessionId } from '../contracts/ids.js';
 import type { IDisposable } from '../types/disposable.js';
-import type { ProcessResult, SessionInfo } from './ConnectionPool.js';
+
+/**
+ * Represents a content block in a process result.
+ */
+export type ContentBlock = { type: 'text'; text: string };
+
+export interface ProcessResult {
+	content: ContentBlock[];
+	isError?: boolean;
+}
+
+export interface SessionServer {
+	processThought(input: ThoughtData): Promise<ProcessResult>;
+	stop(): void | Promise<void>;
+}
+
+export interface SessionInfo {
+	id: SessionId;
+	server: SessionServer;
+	createdAt: number;
+	lastActivityAt: number;
+	isActive: boolean;
+}
 
 /**
  * Statistics describing the current state of the connection pool.
