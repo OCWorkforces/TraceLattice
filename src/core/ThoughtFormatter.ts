@@ -15,6 +15,12 @@ import type { StepRecommendation } from './step.js';
 import type { ThoughtData } from './thought.js';
 import { assertNever } from '../utils.js';
 
+type ThoughtDisplay = {
+	readonly icon: string;
+	readonly label: string;
+	readonly suffix: string;
+};
+
 /**
  * Formatter for thought data and step recommendations.
  *
@@ -161,74 +167,10 @@ export class ThoughtFormatter implements IThoughtFormatter {
 			thought_number,
 			total_thoughts,
 			thought,
-			is_revision,
-			revises_thought,
-			branch_from_thought,
 			current_step,
 		} = thoughtData;
 
-		let icon: string;
-		let label = 'Thought';
-		let suffix = '';
-
-		if (is_revision) {
-			icon = chalk.yellow('🔄');
-			label = 'Revision';
-			suffix = chalk.gray(` (revise #${revises_thought})`);
-		} else if (branch_from_thought) {
-			icon = chalk.green('🌿');
-			label = 'Branch';
-			suffix = chalk.gray(` (from #${branch_from_thought})`);
-		} else {
-			const thoughtType: ThoughtType = thoughtData.thought_type ?? 'regular';
-			switch (thoughtType) {
-				case 'hypothesis':
-					icon = chalk.magenta('🔬');
-					label = 'Hypothesis';
-					break;
-				case 'verification':
-					icon = chalk.green('✅');
-					label = 'Verification';
-					break;
-				case 'critique':
-					icon = chalk.red('🔍');
-					label = 'Critique';
-					break;
-				case 'synthesis':
-					icon = chalk.cyan('🧬');
-					label = 'Synthesis';
-					break;
-				case 'meta':
-					icon = chalk.gray('🧠');
-					label = 'Meta';
-					break;
-				case 'tool_call':
-					icon = chalk.yellow('🔧');
-					label = 'Tool Call';
-					break;
-				case 'tool_observation':
-					icon = chalk.yellow('👁️');
-					label = 'Tool Observation';
-					break;
-				case 'assumption':
-					icon = chalk.yellow('💡');
-					label = 'Assumption';
-					break;
-				case 'decomposition':
-					icon = chalk.cyan('🧩');
-					label = 'Decomposition';
-					break;
-				case 'backtrack':
-					icon = chalk.red('↩️');
-					label = 'Backtrack';
-					break;
-				case 'regular':
-					icon = chalk.blue('💭');
-					break;
-				default:
-					assertNever(thoughtType);
-			}
-		}
+		const { icon, label, suffix } = resolveThoughtDisplay(thoughtData);
 
 		// Build header: "💭 Thought 1/3: "
 		const retractedTag = thoughtData.retracted ? chalk.red.strikethrough('[RETRACTED] ') : '';
@@ -257,5 +199,51 @@ export class ThoughtFormatter implements IThoughtFormatter {
 		}
 
 		return lines.join('\n');
+	}
+}
+
+function resolveThoughtDisplay(thoughtData: ThoughtData): ThoughtDisplay {
+	if (thoughtData.is_revision) {
+		return {
+			icon: chalk.yellow('🔄'),
+			label: 'Revision',
+			suffix: chalk.gray(` (revise #${thoughtData.revises_thought})`),
+		};
+	}
+
+	if (thoughtData.branch_from_thought) {
+		return {
+			icon: chalk.green('🌿'),
+			label: 'Branch',
+			suffix: chalk.gray(` (from #${thoughtData.branch_from_thought})`),
+		};
+	}
+
+	const thoughtType: ThoughtType = thoughtData.thought_type ?? 'regular';
+	switch (thoughtType) {
+		case 'hypothesis':
+			return { icon: chalk.magenta('🔬'), label: 'Hypothesis', suffix: '' };
+		case 'verification':
+			return { icon: chalk.green('✅'), label: 'Verification', suffix: '' };
+		case 'critique':
+			return { icon: chalk.red('🔍'), label: 'Critique', suffix: '' };
+		case 'synthesis':
+			return { icon: chalk.cyan('🧬'), label: 'Synthesis', suffix: '' };
+		case 'meta':
+			return { icon: chalk.gray('🧠'), label: 'Meta', suffix: '' };
+		case 'tool_call':
+			return { icon: chalk.yellow('🔧'), label: 'Tool Call', suffix: '' };
+		case 'tool_observation':
+			return { icon: chalk.yellow('👁️'), label: 'Tool Observation', suffix: '' };
+		case 'assumption':
+			return { icon: chalk.yellow('💡'), label: 'Assumption', suffix: '' };
+		case 'decomposition':
+			return { icon: chalk.cyan('🧩'), label: 'Decomposition', suffix: '' };
+		case 'backtrack':
+			return { icon: chalk.red('↩️'), label: 'Backtrack', suffix: '' };
+		case 'regular':
+			return { icon: chalk.blue('💭'), label: 'Thought', suffix: '' };
+		default:
+			assertNever(thoughtType);
 	}
 }
