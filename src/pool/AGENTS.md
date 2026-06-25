@@ -1,6 +1,6 @@
 # POOL MODULE
 
-**Updated:** 2026-05-17
+**Updated:** 2026-06-25
 **Parent:** ../AGENTS.md
 
 ## OVERVIEW
@@ -11,8 +11,8 @@ Multi-user session isolation for concurrent MCP clients. Each session is a `Sess
 
 ```
 src/pool/
-├── ConnectionPool.ts   # Main pool: session lifecycle, TTL cleanup, stats (467L)
-└── IConnectionPool.ts  # IConnectionPool interface + ConnectionPoolStats type (2.9K)
+├── ConnectionPool.ts   # Main pool: session lifecycle, TTL cleanup, stats (450L)
+└── IConnectionPool.ts  # Shared pool contract + ContentBlock, ProcessResult, SessionServer, SessionInfo, ConnectionPoolStats (133L)
 ```
 
 ## API
@@ -30,7 +30,7 @@ const pool = new ConnectionPool({
 const sessionId = await pool.createSession();  // throws MaxSessionsReachedError
 await pool.process(sessionId, thought);         // throws SessionNotFoundError / SessionNotActiveError
 await pool.closeSession(sessionId);
-pool.getStats(): ConnectionPoolStats           // activeSessions, totalCreated, totalClosed
+pool.getStats(): ConnectionPoolStats           // totalSessions, activeSessions, maxSessions, cleanupEnabled, sessionTimeout
 await pool.dispose();                           // graceful shutdown, closes all sessions
 ```
 
@@ -51,3 +51,4 @@ All errors are subclasses of `SequentialThinkingError` from `errors.ts`.
 - `SessionServer` is the per-user server instance created by `serverFactory`. Consumed by SSE and StreamableHTTP transports that need per-client isolation.
 - Auto-cleanup sweeps expired sessions every `cleanupInterval` ms; sessions idle longer than `sessionTimeout` ms are closed.
 - `IConnectionPool` is the interface used by transport layer code — import the interface, not the concrete class.
+- Shared pool types (`ContentBlock`, `ProcessResult`, `SessionServer`, `SessionInfo`, `ConnectionPoolStats`) are owned by `IConnectionPool.ts`. Transport files import them from here; do not re-define them in transport modules.

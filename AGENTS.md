@@ -1,8 +1,8 @@
 # PROJECT KNOWLEDGE BASE
 
-**Updated:** 2026-05-17
-**Commit:** c6871c5
-**Branch:** feat/rslib-rsbuild-migration
+**Updated:** 2026-06-25
+**Commit:** bcb317e
+**Branch:** develop
 
 ## OVERVIEW
 
@@ -23,7 +23,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 │   ├── di/               # DI container + service registry (19 services)
 │   ├── registry/         # Tool/Skill registries (BaseRegistry<T> + subclasses)
 │   ├── contracts/        # Shared interfaces (IMetrics, IDiscoveryCache, etc.)
-│   ├── __tests__/        # Test suite (Vitest, ~85 files; colocated under src)
+│   ├── __tests__/        # Test suite (Vitest, 2101 tests; colocated under src)
 │   ├── cache/            # LRU+TTL discovery cache
 │   ├── logger/           # Structured logging (JSON/pretty)
 │   ├── pool/             # Multi-user session pool
@@ -51,7 +51,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 | **Transports**           | `src/transport/`               | SSE, HTTP, StreamableHTTP implementations                          |
 | **Tool/Skill Discovery** | `src/registry/BaseRegistry.ts` | Base class with frontmatter parsing, LRU cache                     |
 | **Quality Signals**      | `src/core/ThoughtEvaluator.ts` | Stateless confidence signals + reasoning analytics                 |
-| **Reasoning Types**      | `src/core/reasoning.ts`        | ThoughtType union, ConfidenceSignals, ReasoningStats               |
+| **Reasoning Types**      | `src/contracts/reasoning-types.ts` + `src/core/reasoning.ts` | `ThoughtType`/`PatternName` vocabulary; confidence/stat objects stay in core reasoning |
 | **Metrics**              | `src/metrics/Metrics.impl.ts`  | Prometheus counters, gauges, histograms                            |
 | **Config**               | `src/config/ConfigLoader.ts`   | YAML + env var loading                                             |
 | **DAG / Graph**          | `src/core/graph/`              | Multi-parent thought edges, graph traversal                        |
@@ -71,15 +71,15 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 | `initializeServer`                  | function  | src/lib.ts                               | Convenience factory with config + logger + watchers                                  |
 | `HistoryManager`                    | class     | src/core/HistoryManager.ts               | Coordinates history + branching + session partitioning. Delegates to EdgeEmitter, PersistenceBuffer, SessionManager. Ownership enforced on all mutating methods including `clear()`. TTL eviction (30min), LRU (100 max). |
 | `IHistoryManager`                   | interface | src/core/IHistoryManager.ts              | History manager contract (8 methods + session lifecycle)                                                 |
-| `ThoughtProcessor` | class | src/core/ThoughtProcessor.ts | Normalize → validate → persist → format → evaluate → strategy → hints pipeline (806L) |
+| `ThoughtProcessor` | class | src/core/ThoughtProcessor.ts | Normalize → validate → persist → format → evaluate → strategy → hints pipeline (851L) |
 | `ThoughtEvaluator` | class | src/core/ThoughtEvaluator.ts | Stateless quality signals + reasoning analytics (150L) |
 | `normalizeInput`                    | function  | src/core/InputNormalizer.ts              | Field correction, default filling, sanitization of `branch_id`, step-level urgency phrase stripping (460L) |
-| `ThoughtFormatter` | class | src/core/ThoughtFormatter.ts | Chalk display: 💭🔄🌿🔬✅🔍🧬🧠📝 (264L) |
+| `ThoughtFormatter` | class | src/core/ThoughtFormatter.ts | Chalk display metadata + rendering: 💭🔄🌿🔬✅🔍🧬🧠📝 (249L) |
 | `ThoughtData` | interface | src/core/thought.ts | Core data structure with reasoning fields + `retracted` boolean. Derived from `v.InferOutput<SequentialThinkingSchema>` (single source of truth). |
-| `ThoughtType`                       | union     | src/core/reasoning.ts                    | `'regular'\|'hypothesis'\|'verification'\|'critique'\|'synthesis'\|'meta'\|'tool_call'\|'tool_observation'\|'assumption'\|'decomposition'\|'backtrack'` |
+| `ThoughtType`                       | union     | src/contracts/reasoning-types.ts         | 11-variant reasoning vocabulary, re-exported from `src/core/reasoning.ts` for compatibility |
 | `ConfidenceSignals`                 | interface | src/core/reasoning.ts                    | Computed quality indicators (depth, revision count, type distribution)               |
 | `ReasoningStats`                    | interface | src/core/reasoning.ts                    | Aggregated session analytics (totals, hypothesis chains, averages)                   |
-| `PatternName`                      | union     | src/core/reasoning.ts                    | 6 pattern name variants for `PatternSignal.pattern` (consecutive_without_verification, unverified_hypothesis, etc.) |
+| `PatternName`                      | union     | src/contracts/reasoning-types.ts         | 6 pattern name variants for `PatternSignal.pattern`, re-exported from `src/core/reasoning.ts` |
 | `SequentialThinkingError` | class | src/errors.ts | Base error (20 subclasses + `ValidationError` with `field`, each with unique `code`). Module exports `ERROR_CODES` const (22 codes), `ErrorCode` union, `isErrorCode()` type guard, `getErrorMessage()` helper. (829L) |
 | `BaseRegistry<T>`                   | class     | src/registry/BaseRegistry.ts             | Generic CRUD + discovery + cache + frontmatter                                       |
 | `ToolRegistry`                      | class     | src/registry/ToolRegistry.ts             | MCP tool discovery (extends BaseRegistry)                                            |
@@ -92,7 +92,13 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 | `DiscoveryCache`                    | class     | src/cache/DiscoveryCache.ts              | LRU+TTL cache (TTL 300s, max 100 entries)                                            |
 | `Metrics`                           | class     | src/metrics/Metrics.impl.ts              | Prometheus counters, gauges, histograms                                              |
 | `ConfigLoader`                      | class     | src/config/ConfigLoader.ts               | YAML + env var config (env > project > user > defaults)                              |
-| `ConnectionPool`                    | class     | src/pool/ConnectionPool.ts               | Multi-user session isolation with timeouts                                           |
+| `ConnectionPool`                    | class     | src/pool/ConnectionPool.ts               | Multi-user session isolation with timeouts (450L)                                    |
+| `IConnectionPool`                   | interface | src/pool/IConnectionPool.ts              | Contract for multi-user session pool; imported by transports instead of concrete `ConnectionPool` |
+| `ContentBlock`                      | type      | src/pool/IConnectionPool.ts              | `{ type: 'text'; text: string }` pool result content unit                            |
+| `ProcessResult`                     | interface | src/pool/IConnectionPool.ts              | Pool processing result: `content: ContentBlock[]`, optional `isError`                |
+| `SessionServer`                     | interface | src/pool/IConnectionPool.ts              | Per-user server instance: `processThought()` + `stop()`                              |
+| `SessionInfo`                       | interface | src/pool/IConnectionPool.ts              | Session snapshot: id, server, createdAt, lastActivityAt, isActive                    |
+| `ConnectionPoolStats`               | interface | src/pool/IConnectionPool.ts              | Pool state snapshot: totalSessions, activeSessions, maxSessions, cleanupEnabled, sessionTimeout |
 | `EdgeKind`                          | union     | src/core/graph/Edge.ts                   | 8 edge kinds: sequence/branch/merge/verifies/critiques/derives_from/tool_invocation/revises |
 | `Edge`                              | interface | src/core/graph/Edge.ts                   | DAG edge with id, from, to, kind, sessionId, createdAt, metadata                     |
 | `EdgeStore`                         | class     | src/core/graph/EdgeStore.ts              | Per-session edge CRUD with adjacency Maps (byId, outgoing, incoming). Implements IEdgeStore. |
@@ -117,7 +123,12 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 | `SignalComputer` | class | src/core/evaluator/SignalComputer.ts | Stateless `ConfidenceSignals` computation (extracted from ThoughtEvaluator). Uses `roundToPrecision()` for FP-safe averages. |
 | `Aggregator` | class | src/core/evaluator/Aggregator.ts | `ReasoningStats` aggregation: hypothesis chains, type distributions, averages. Uses `roundToPrecision()` for FP-safe averages. |
 | `PatternDetector` | class | src/core/evaluator/PatternDetector.ts | 6 pattern detectors (all emit `warning` severity): consecutive_without_verification, unverified_hypothesis, monotonic_type, no_alternatives_explored, confidence_drift, healthy_verification (`info`-only). (262L) |
-| `Calibrator`                        | class     | src/core/evaluator/Calibrator.ts         | Beta(2,2) priors + Brier score + ECE for confidence calibration (302L)               |
+| `Calibrator`                        | class     | src/core/evaluator/Calibrator.ts         | Beta(2,2) priors + Brier score + ECE for confidence calibration; delegates temperature math to `calibration-math.ts` (227L) |
+| `TEMPERATURE_GRID`                  | constant  | src/core/evaluator/calibration-math.ts   | Candidate temperatures for grid search: `[0.5, 0.75, 1.0, 1.25, 1.5, 2.0]`          |
+| `MIN_OUTCOMES_FOR_TEMPERATURE`      | constant  | src/core/evaluator/calibration-math.ts   | Minimum recorded outcomes (10) before temperature scaling activates                  |
+| `applyTemperature`                  | function  | src/core/evaluator/calibration-math.ts   | `sigmoid(logit(p) / T)` temperature-scaled probability                               |
+| `negativeLogLikelihood`             | function  | src/core/evaluator/calibration-math.ts   | Mean NLL across outcomes for a candidate temperature                                 |
+| `fitTemperature`                    | function  | src/core/evaluator/calibration-math.ts   | Grid-search best temperature minimizing NLL; falls back to T=1.0 when fewer than 10 outcomes exist |
 | `ICalibrator`                       | interface | src/contracts/calibrator.ts              | Calibrator contract + `CalibrationMetrics`, `CalibrationResult` types                 |
 | `InMemorySuspensionStore`           | class     | src/core/tools/InMemorySuspensionStore.ts | Per-session tool suspension with TTL expiry, periodic sweep (150L) |
 | `ISuspensionStore`                  | interface | src/contracts/suspension.ts              | Suspension contract: suspend, resume, peek, expire, clearSession, size, start/stop |
@@ -178,7 +189,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 - **CD**: `.github/workflows/cd.yml` — main branch only; build + test, skip publish if version already exists, then npm publish with provenance, tag `v<version>`, GitHub release.
 - **Coverage**: Vitest config uses duplicate threshold keys; effective thresholds are branches 90%, functions 60%, lines 65%, statements 65%.
 - **Test Helpers**: `src/__tests__/helpers/factories.ts` — `createTestThought()`, `MockHistoryManager`. `src/__tests__/helpers/timers.ts` — timer helpers.
-- **Large Files**: `errors.ts` (832L), `ThoughtProcessor.ts` (806L), `schema.ts` (727L), `StreamableHttpTransport.ts` (729L), `lib.ts` (656L), `HistoryManager.ts` (573L), `ServerConfig.ts` (517L), `SqlitePersistence.ts` (507L), `SseTransport.ts` (496L), `ConnectionPool.ts` (467L).
+- **Large Files**: `ThoughtProcessor.ts` (851L), `errors.ts` (832L), `StreamableHttpTransport.ts` (729L), `schema.ts` (727L), `lib.ts` (677L), `HistoryManager.ts` (573L), `ServerConfig.ts` (517L), `SqlitePersistence.ts` (507L), `SseTransport.ts` (496L), `FilePersistence.ts` (482L), `ConfigLoader.ts` (480L), `metrics.impl.ts` (470L), `InputNormalizer.ts` (460L), `ConnectionPool.ts` (450L).
 - **Architectural Layers**: `.sentrux/rules.toml` — 9 layers (types→crosscutting→config→core→domain→infrastructure→di→app→cli), 6 forbidden boundaries.
 - **Duplicate env files**: Both `.env.example` (minimal) and `.example.env` (full) exist — non-standard.
 - **Build split**: `rslib` emits `dist/lib.js`; `rsbuild` bundles `src/cli.ts` but externalizes `./lib.js`; `scripts/postbuild-cli.mjs` injects `#!/usr/bin/env bun` and chmods `dist/cli.js`.
@@ -189,7 +200,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 npm run build       # rslib build && rsbuild build -c rsbuild.config.ts && node scripts/postbuild-cli.mjs
 npm run start       # bun dist/cli.js
 npm run dev         # bunx @modelcontextprotocol/inspector dist/cli.js
-npm test            # vitest run (2100 tests)
+npm test            # vitest run (2101 tests)
 npm run test:coverage # vitest run --coverage
 npm run type-check  # tsc --noEmit
 npm run lint        # eslint src/

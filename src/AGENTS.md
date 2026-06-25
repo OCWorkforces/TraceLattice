@@ -1,6 +1,6 @@
 # SRC
 
-**Updated:** 2026-05-17 | **Parent:** ../AGENTS.md
+**Updated:** 2026-06-25 | **Parent:** ../AGENTS.md
 
 ## OVERVIEW
 
@@ -10,7 +10,7 @@ TypeScript source root. Domain logic, transports, DI, infrastructure. Entry: `cl
 
 ```
 src/
-├── lib.ts            # ToolAwareSequentialThinkingServer, DI wiring, factories (656L) + public API entry
+├── lib.ts            # ToolAwareSequentialThinkingServer, DI wiring, factories (677L) + public API entry
 ├── cli.ts            # CLI bin entry (tracelattice)
 ├── schema.ts         # Valibot schemas + TOOL_DESCRIPTION (727L)
 ├── ServerConfig.ts   # Config validation, 10 fields + 7 feature flags (517L)
@@ -26,7 +26,7 @@ src/
 ├── transport/        # SSE/HTTP/StreamableHTTP — has AGENTS.md
 ├── persistence/      # File/SQLite/Memory backends — has AGENTS.md
 ├── contracts/        # Cross-module interfaces hub — has AGENTS.md
-├── __tests__/        # Vitest suite — has AGENTS.md
+├── __tests__/        # Vitest suite (2101 tests) — has AGENTS.md
 ├── di/               # DIContainer + ServiceRegistry (19 typed keys) — has AGENTS.md
 ├── registry/         # BaseRegistry<T>, ToolRegistry, SkillRegistry
 ├── cache/            # LRU+TTL DiscoveryCache (300s, 100 max)
@@ -63,7 +63,7 @@ src/
 - **Subdirs with own AGENTS.md** (read first before navigating): `core/`, `core/graph/`, `core/compression/`, `core/evaluator/`, `core/tools/`, `core/reasoning/`, `core/reasoning/strategies/`, `transport/`, `persistence/`, `contracts/`, `registry/`, `di/`, `config/`, `logger/`, `pool/`, `cache/`, `metrics/`, `watchers/`, `health/`, `types/`, `__tests__/`.
 - **Coupling rule**: Cross-module type imports go through `contracts/`. Exceptions: `IHistoryManager` and `ThoughtData` live in `core/` (domain primitives).
 - **Layered**: 9 layers in `.sentrux/rules.toml` (types → crosscutting → config → core → domain → infrastructure → di → app → cli). 6 forbidden boundaries.
-- **Large files**: `errors.ts` (832L), `schema.ts` (727L), `lib.ts` (656L), `ServerConfig.ts` (517L). Split cautiously; risk public API churn.
+- **Large files**: `ThoughtProcessor.ts` (851L), `errors.ts` (832L), `StreamableHttpTransport.ts` (729L), `schema.ts` (727L), `lib.ts` (677L), `HistoryManager.ts` (573L), `ServerConfig.ts` (517L), `SqlitePersistence.ts` (507L). Split cautiously; risk public API churn.
 - **MCP tool definition**: `SEQUENTIAL_THINKING_TOOL`, `SequentialThinkingSchema`, and the large LLM-facing `TOOL_DESCRIPTION` live in `schema.ts`, not `lib.ts` or `core/tools/`.
 - **CLI build dependency**: `rsbuild.config.ts` externalizes `./lib.js`; always build library before CLI (`npm run build` already does this).
 - **DI escape hatch**: `Container.resolveDynamic(name: string): unknown` for runtime-keyed lookups. The deprecated `resolve<T>(string)` string overload was removed — use typed `resolve(key)` against `ServiceRegistry` (e.g. `ToolRegistry: ToolRegistry` is the concrete type, not an interface).

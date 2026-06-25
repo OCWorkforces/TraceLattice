@@ -1,6 +1,6 @@
 # CONTRACTS MODULE
 
-**Updated:** 2026-05-17
+**Updated:** 2026-06-25
 **Parent:** ../AGENTS.md
 
 ## OVERVIEW
@@ -17,6 +17,7 @@ Shared interface contracts. Single coupling point for cross-module type imports 
 | `calibrator.ts` | `ICalibrator`, `CalibrationMetrics`, `CalibrationResult` |
 | `suspension.ts` | `ISuspensionStore`, `SuspensionRecord` |
 | `ids.ts` | `SessionId`, `ThoughtId`, `EdgeId`, `SuspensionToken`, `BranchId`, `SummaryId` (branded types) + validated constructors (`asSessionId()`, `asBranchId()` etc.) + unchecked constructors (`asThoughtId()`, `asEdgeId()`, `asSuspensionToken()`, `asSummaryId()`) + generators + `GLOBAL_SESSION_ID` constant |
+| `reasoning-types.ts` | `ThoughtType`, `PatternName` reasoning vocabulary unions |
 | `features.ts` | `FeatureFlags`, `DEFAULT_FLAGS`, `hasFeature()` type guard |
 | `transport.ts` | `ITransport`, `TransportKind` |
 | `PersistenceBackend.ts` | `PersistenceBackend` (13 methods), `PersistenceConfig` |
@@ -29,7 +30,7 @@ Key contracts:
 - `FeatureFlags`: 7 readonly flags + `DEFAULT_FLAGS` + `hasFeature()` type guard, re-exported from `ServerConfig.ts`
 - `ITransport`: shared transport lifecycle (`kind`, `connect`, `stop`, `clientCount`, `isShuttingDown`, `serverUrl`)
 - `GLOBAL_SESSION_ID`: replaces literal `'__global__'` string everywhere
-
+- `ThoughtType` / `PatternName`: canonical reasoning vocabulary in `reasoning-types.ts`; `core/reasoning.ts` keeps compatibility aliases while it owns `ConfidenceSignals`, `ReasoningStats`, and `PatternSignal`.
 - `ISessionLock` (2 methods): `acquire(sessionId) → Promise<ISessionLockHandle>`, `release(handle)` — per-session concurrency control. `@internal` — do not use outside DI-wired code.
 ## RULES
 

@@ -1,6 +1,6 @@
 # TRANSPORT MODULE
 
-**Updated:** 2026-05-17
+**Updated:** 2026-06-25
 **Parent:** ../AGENTS.md
 
 ## OVERVIEW
@@ -57,3 +57,4 @@ Stateless JSON-RPC 2.0 over HTTP. Pipeline: rate limit → CORS → body size �
 - `HealthChecker` integration for `/health`
 - `Mcp-Session-Id` header is the stateful StreamableHTTP session key
 - `HttpHelpers.readRequestBody` shared across HTTP variants, never duplicate
+- `SseTransport` depends on `IConnectionPool` from `src/pool/IConnectionPool.ts`, not concrete `ConnectionPool`. Keep transport code on the pool interface boundary.
