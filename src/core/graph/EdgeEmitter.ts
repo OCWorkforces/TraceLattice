@@ -69,83 +69,117 @@ export class EdgeEmitter {
 		if (!thought.id) return;
 
 		const sessionId = thought.session_id ?? this._defaultSessionId;
-		let emittedRelational = false;
-
-		if (thought.branch_from_thought !== undefined && thought.branch_id) {
-			const parentId = this.resolveThoughtId(session, thought.branch_from_thought);
-			if (this._addEdgeIfValid(parentId, thought.id, 'branch', sessionId)) {
-				emittedRelational = true;
-			}
-		}
-
-		if (thought.merge_from_thoughts?.length) {
-			for (const src of thought.merge_from_thoughts) {
-				const srcId = this.resolveThoughtId(session, src);
-				if (this._addEdgeIfValid(srcId, thought.id, 'merge', sessionId)) {
-					emittedRelational = true;
-				}
-			}
-		}
-
-		if (thought.verification_target !== undefined && thought.thought_type === 'verification') {
-			const targetId = this.resolveThoughtId(session, thought.verification_target);
-			if (this._addEdgeIfValid(thought.id, targetId, 'verifies', sessionId)) {
-				emittedRelational = true;
-			}
-		}
-
-		if (thought.verification_target !== undefined && thought.thought_type === 'critique') {
-			const targetId = this.resolveThoughtId(session, thought.verification_target);
-			if (this._addEdgeIfValid(thought.id, targetId, 'critiques', sessionId)) {
-				emittedRelational = true;
-			}
-		}
-
-		if (thought.synthesis_sources?.length) {
-			for (const src of thought.synthesis_sources) {
-				const srcId = this.resolveThoughtId(session, src);
-				if (this._addEdgeIfValid(srcId, thought.id, 'derives_from', sessionId)) {
-					emittedRelational = true;
-				}
-			}
-		}
-
-		if (thought.revises_thought !== undefined) {
-			const targetId = this.resolveThoughtId(session, thought.revises_thought);
-			if (this._addEdgeIfValid(thought.id, targetId, 'revises', sessionId)) {
-				emittedRelational = true;
-			}
-		}
-
-		// tool_invocation edge: tool_call → tool_observation
-		if (thought.thought_type === 'tool_observation' && thought._resumedFrom !== undefined) {
-			const toolCallId = this.resolveThoughtId(session, thought._resumedFrom);
-			const meta: Record<string, unknown> = {};
-			if (thought.tool_name !== undefined) meta.tool_name = thought.tool_name;
-			if (
-				this._addEdgeIfValid(
-					toolCallId,
-					thought.id,
-					'tool_invocation',
-					sessionId,
-					Object.keys(meta).length > 0 ? meta : undefined
-				)
-			) {
-				emittedRelational = true;
-			}
-		}
+		const emittedRelational = [
+			this._emitBranchEdge(session, thought, sessionId),
+			this._emitMergeEdges(session, thought, sessionId),
+			this._emitVerificationEdge(session, thought, sessionId),
+			this._emitCritiqueEdge(session, thought, sessionId),
+			this._emitSynthesisEdges(session, thought, sessionId),
+			this._emitRevisionEdge(session, thought, sessionId),
+			this._emitToolInvocationEdge(session, thought, sessionId),
+		].some((emitted) => emitted);
 
 		if (!emittedRelational) {
-			// Default: chronological sequence from previous thought (the one before current).
-			// current was just pushed, so prev is at length - 2.
-			const history = session.thought_history;
-			if (history.length >= 2) {
-				const prev = history[history.length - 2]!;
-				if (prev.id) {
-					this._addEdgeIfValid(prev.id, thought.id, 'sequence', sessionId);
-				}
-			}
+			this._emitSequenceEdge(session, thought, sessionId);
 		}
+	}
+
+	private _emitBranchEdge(
+		session: EdgeEmissionSession,
+		thought: ThoughtData,
+		sessionId: string
+	): boolean {
+		if (thought.branch_from_thought === undefined || !thought.branch_id) return false;
+
+		const parentId = this.resolveThoughtId(session, thought.branch_from_thought);
+		return this._addEdgeIfValid(parentId, thought.id, 'branch', sessionId);
+	}
+
+	private _emitMergeEdges(
+		session: EdgeEmissionSession,
+		thought: ThoughtData,
+		sessionId: string
+	): boolean {
+		let emitted = false;
+		for (const src of thought.merge_from_thoughts ?? []) {
+			const srcId = this.resolveThoughtId(session, src);
+			emitted = this._addEdgeIfValid(srcId, thought.id, 'merge', sessionId) || emitted;
+		}
+		return emitted;
+	}
+
+	private _emitVerificationEdge(
+		session: EdgeEmissionSession,
+		thought: ThoughtData,
+		sessionId: string
+	): boolean {
+		if (thought.verification_target === undefined || thought.thought_type !== 'verification') return false;
+
+		const targetId = this.resolveThoughtId(session, thought.verification_target);
+		return this._addEdgeIfValid(thought.id, targetId, 'verifies', sessionId);
+	}
+
+	private _emitCritiqueEdge(
+		session: EdgeEmissionSession,
+		thought: ThoughtData,
+		sessionId: string
+	): boolean {
+		if (thought.verification_target === undefined || thought.thought_type !== 'critique') return false;
+
+		const targetId = this.resolveThoughtId(session, thought.verification_target);
+		return this._addEdgeIfValid(thought.id, targetId, 'critiques', sessionId);
+	}
+
+	private _emitSynthesisEdges(
+		session: EdgeEmissionSession,
+		thought: ThoughtData,
+		sessionId: string
+	): boolean {
+		let emitted = false;
+		for (const src of thought.synthesis_sources ?? []) {
+			const srcId = this.resolveThoughtId(session, src);
+			emitted = this._addEdgeIfValid(srcId, thought.id, 'derives_from', sessionId) || emitted;
+		}
+		return emitted;
+	}
+
+	private _emitRevisionEdge(
+		session: EdgeEmissionSession,
+		thought: ThoughtData,
+		sessionId: string
+	): boolean {
+		if (thought.revises_thought === undefined) return false;
+
+		const targetId = this.resolveThoughtId(session, thought.revises_thought);
+		return this._addEdgeIfValid(thought.id, targetId, 'revises', sessionId);
+	}
+
+	private _emitToolInvocationEdge(
+		session: EdgeEmissionSession,
+		thought: ThoughtData,
+		sessionId: string
+	): boolean {
+		if (thought.thought_type !== 'tool_observation' || thought._resumedFrom === undefined) {
+			return false;
+		}
+
+		const toolCallId = this.resolveThoughtId(session, thought._resumedFrom);
+		const metadata = thought.tool_name !== undefined ? { tool_name: thought.tool_name } : undefined;
+		return this._addEdgeIfValid(toolCallId, thought.id, 'tool_invocation', sessionId, metadata);
+	}
+
+	private _emitSequenceEdge(
+		session: EdgeEmissionSession,
+		thought: ThoughtData,
+		sessionId: string
+	): boolean {
+		const history = session.thought_history;
+		if (history.length < 2) return false;
+
+		const prev = history[history.length - 2];
+		if (!prev?.id) return false;
+
+		return this._addEdgeIfValid(prev.id, thought.id, 'sequence', sessionId);
 	}
 
 	/**
