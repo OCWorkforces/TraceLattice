@@ -44,6 +44,27 @@ import type { CompressionService } from './compression/CompressionService.js';
  * emission) can correlate the observation with the suspended `tool_call`.
  */
 type ResumableThought = ThoughtData & { _resumedFrom?: number };
+type ConfidenceSignalsResult = ReturnType<ThoughtEvaluator['computeConfidenceSignals']>;
+type ReasoningStatsResult = ReturnType<ThoughtEvaluator['computeReasoningStats']>;
+
+type ReasoningSignalBundle = {
+	readonly history: ThoughtData[];
+	readonly confidenceSignals: ConfidenceSignalsResult;
+	readonly reasoningStats: ReasoningStatsResult;
+	readonly reasoningHints: readonly string[];
+};
+
+type ProcessedThoughtResponseState = {
+	readonly thought: ThoughtData;
+	readonly sessionId: SessionId | undefined;
+	readonly reasoning: {
+		readonly confidenceSignals: ConfidenceSignalsResult;
+		readonly reasoningStats: ReasoningStatsResult;
+		readonly reasoningHints: readonly string[];
+	};
+	readonly decision: StrategyDecision;
+	readonly warnings: readonly string[];
+};
 
 
 /**
@@ -301,68 +322,28 @@ export class ThoughtProcessor {
 			const formattedThought = this.thoughtFormatter.formatThought(checkedInput);
 			this.log(formattedThought, { sessionId: sessionId ?? GLOBAL_SESSION_ID });
 
-			// Compute quality signals — fetch history/branches once
-			const history = this.historyManager.getHistory(sessionId);
-			const branches = this.historyManager.getBranches(sessionId);
-
-			const confidenceSignals = this._thoughtEvaluator.computeConfidenceSignals(
-				history,
-				branches
-			);
-			const reasoningStats = this._thoughtEvaluator.computeReasoningStats(
-				history,
-				branches
-			);
-
-			// Detect reasoning patterns and generate hints
-			const patternSignals = this._thoughtEvaluator.computePatternSignals(
-				history,
-				branches
-			);
-			const reasoningHints = this._generateHints(
-				patternSignals,
-				checkedInput.thought_number,
-				sessionId
-			);
+			const signals = this._collectReasoningSignals(checkedInput, sessionId);
 
 			// Strategy decision — pluggable reasoning policy hook.
 			// Built after history/stats so strategies see the latest state.
-			const decision = this._runStrategy(checkedInput, history, reasoningStats, sessionId);
+			const decision = this._runStrategy(
+				checkedInput,
+				signals.history,
+				signals.reasoningStats,
+				sessionId
+			);
 
-			return {
-				content: [
-					{
-						type: 'text' as const,
-						text: JSON.stringify(
-							{
-							thought_number: checkedInput.thought_number,
-							total_thoughts: checkedInput.total_thoughts,
-							next_thought_needed: checkedInput.next_thought_needed ?? true,
-							branches: this.historyManager.getBranchIds(sessionId),
-							thought_history_length: this.historyManager.getHistoryLength(sessionId),
-							available_mcp_tools: checkedInput.available_mcp_tools,
-							available_skills: checkedInput.available_skills,
-							current_step: checkedInput.current_step,
-							previous_steps: checkedInput.previous_steps,
-							remaining_steps: checkedInput.remaining_steps,
-							// Reasoning enrichment fields
-							thought_type: checkedInput.thought_type,
-							quality_score: checkedInput.quality_score,
-							confidence: checkedInput.confidence,
-							hypothesis_id: checkedInput.hypothesis_id,
-							confidence_signals: confidenceSignals,
-							reasoning_stats: reasoningStats,
-							...(reasoningHints.length > 0 && { reasoning_hints: reasoningHints }),
-							...(decision.action !== 'continue' && { strategy_hint: decision }),
-							...(allWarnings.length > 0 && { warnings: allWarnings.slice(0, 3) }),
-							...(sessionId ? { session_id: sessionId } : {}),
-						},
-						null,
-						2
-					),
-					},
-				],
-			};
+			return this._buildSuccessResponse({
+				thought: checkedInput,
+				sessionId,
+				reasoning: {
+					confidenceSignals: signals.confidenceSignals,
+					reasoningStats: signals.reasoningStats,
+					reasoningHints: signals.reasoningHints,
+				},
+				decision,
+				warnings: allWarnings,
+			});
 		} catch (error) {
 			return {
 				content: [
@@ -383,6 +364,70 @@ export class ThoughtProcessor {
 				isError: true,
 			};
 		}
+	}
+
+	private _collectReasoningSignals(
+		input: ThoughtData,
+		sessionId?: SessionId
+	): ReasoningSignalBundle {
+		const history = this.historyManager.getHistory(sessionId);
+		const branches = this.historyManager.getBranches(sessionId);
+		const confidenceSignals = this._thoughtEvaluator.computeConfidenceSignals(
+			history,
+			branches
+		);
+		const reasoningStats = this._thoughtEvaluator.computeReasoningStats(history, branches);
+		const patternSignals = this._thoughtEvaluator.computePatternSignals(history, branches);
+		const reasoningHints = this._generateHints(
+			patternSignals,
+			input.thought_number,
+			sessionId
+		);
+
+		return {
+			history,
+			confidenceSignals,
+			reasoningStats,
+			reasoningHints,
+		};
+	}
+
+	private _buildSuccessResponse(state: ProcessedThoughtResponseState): CallToolResult {
+		return {
+			content: [
+				{
+					type: 'text' as const,
+					text: JSON.stringify(
+						{
+							thought_number: state.thought.thought_number,
+							total_thoughts: state.thought.total_thoughts,
+							next_thought_needed: state.thought.next_thought_needed ?? true,
+							branches: this.historyManager.getBranchIds(state.sessionId),
+							thought_history_length: this.historyManager.getHistoryLength(state.sessionId),
+							available_mcp_tools: state.thought.available_mcp_tools,
+							available_skills: state.thought.available_skills,
+							current_step: state.thought.current_step,
+							previous_steps: state.thought.previous_steps,
+							remaining_steps: state.thought.remaining_steps,
+							thought_type: state.thought.thought_type,
+							quality_score: state.thought.quality_score,
+							confidence: state.thought.confidence,
+							hypothesis_id: state.thought.hypothesis_id,
+							confidence_signals: state.reasoning.confidenceSignals,
+							reasoning_stats: state.reasoning.reasoningStats,
+							...(state.reasoning.reasoningHints.length > 0 && {
+								reasoning_hints: state.reasoning.reasoningHints,
+							}),
+							...(state.decision.action !== 'continue' && { strategy_hint: state.decision }),
+							...(state.warnings.length > 0 && { warnings: state.warnings.slice(0, 3) }),
+							...(state.sessionId ? { session_id: state.sessionId } : {}),
+						},
+						null,
+						2
+					),
+				},
+			],
+		};
 	}
 
 	/**
