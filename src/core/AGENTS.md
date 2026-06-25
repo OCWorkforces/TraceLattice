@@ -30,7 +30,7 @@ Reasoning engine: thought ingest → graph mutation → quality signals → stra
 
 | Task                          | File                                  |
 | ----------------------------- | ------------------------------------- |
-| Add a thought type            | `reasoning.ts` (union) + `thought.ts` + processor branches |
+| Add a thought type            | `contracts/reasoning-types.ts` (canonical union) + `core/reasoning.ts` compatibility export + `thought.ts` + processor branches |
 | Change pipeline order         | `ThoughtProcessor.process()`          |
 | Tweak quality scoring         | `evaluator/SignalComputer.ts`         |
 | New hint pattern              | `evaluator/PatternDetector.ts`        |
@@ -48,7 +48,7 @@ Reasoning engine: thought ingest → graph mutation → quality signals → stra
 - `ThoughtData`: 11 optional reasoning fields + `retracted: boolean` (logical retraction via `backtrack`). Now derived from `v.InferOutput<SequentialThinkingSchema>` (single source of truth). Uses branded ID types (`ThoughtId`, `SessionId`, `SuspensionToken`, `BranchId`) from `contracts/ids.ts`.
 - `ValidatedThought` (`thought.ts`): discriminated union over `kind` with 7 variants — `ToolCallThought`, `ToolObservationThought`, `BacktrackThought`, `VerificationThought`, `CritiqueThought`, `SynthesisThought`, `BaseThought`. Returned by `_validateNewTypes` so handlers no longer use `!` non-null assertions.
 - `BranchId` (branded): keys `Map<BranchId, ThoughtData[]>` for branch storage. Imported from `contracts/ids.ts`.
-- `ThoughtType`: 11-variant union. Flag gates:
+- `ThoughtType`: 11-variant union. Canonical definition lives in `contracts/reasoning-types.ts`; `core/reasoning.ts` re-exports it for compatibility. Flag gates:
   - `newThoughtTypes`: `assumption`, `decomposition`, `backtrack`
   - `toolInterleave`: `tool_call`, `tool_observation`
 - `IReasoningStrategy.decideNext(ctx) → StrategyDecision`: pure policy
@@ -58,13 +58,13 @@ Reasoning engine: thought ingest → graph mutation → quality signals → stra
 
 - `HistoryManager` was decomposed (572L). Mutation logic lives in `EdgeEmitter` / `PersistenceBuffer` / `SessionManager`. Keep it that way: HM coordinates, doesn't compute.
 - `_resolveThoughtId` walks BOTH `session.thought_history` AND every `session.branches[*]`. Branch thoughts are NOT in main history.
-- `ThoughtProcessor` is 798L because it's the seam between schema, persistence, and policy. Don't fold helpers back in. Extract further if it grows.
+- `ThoughtProcessor` is 851L because it's the seam between schema, persistence, and policy. Don't fold helpers back in. Extract further if it grows.
 - `EdgeStore` is always registered in DI. Feature flag `dagEdges` gates the WRITE path only, not the registration.
 - `reasoning/strategies/` lives at depth 4 deliberately. Strategies are leaf policies, not infrastructure.
 - `generateUlid` is timestamp-base36 + random hex. Not a real ULID. Don't rename.
 - `HistoryManager.clear()` enforces ownership via `_getSession()` — cross-owner `reset_state` throws `SessionAccessDeniedError`. Stdio path (no owner) is unrestricted.
 - Input sanitization has two layers: `sanitizeStepField` (urgency phrases + HTML + control chars + length cap) for step-level and reasoning fields, and `sanitizeRationale` (same + 2000-char cap) for tool/skill recommendation rationales. Both use `stripUrgencyPhrases` internally.
 - `_validateNewTypes` returns a `ValidatedThought` discriminated union — `_handleToolCall` / `_handleToolObservation` / backtrack handlers consume the narrowed variant directly. No more `!` assertions in processor branches.
-- `_hintCooldowns` is typed `Map<SessionId, Map<PatternName, number>>` (inner key is `PatternName` from `reasoning.ts`, not raw string).
+- `_hintCooldowns` is typed `Map<SessionId, Map<PatternName, number>>` (inner key is the `PatternName` union from `contracts/reasoning-types.ts`, not raw string).
 - `GLOBAL_SESSION_ID` constant (in `contracts/ids.ts`) replaces the `'__global__'` literal previously sprinkled across session code. Always use the constant.
 - `SessionLock` (`src/core/SessionLock.ts`): per-session concurrency primitive. Registered in DI as `sessionLock: ISessionLock` (19th service). `@internal` — never inject outside of `HistoryManager`.

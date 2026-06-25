@@ -24,7 +24,7 @@ import { URL } from 'node:url';
 import type { McpServer } from 'tmcp';
 import { safeParse } from 'valibot';
 import type { IMetrics } from '../contracts/interfaces.js';
-import type { ConnectionPool } from '../pool/ConnectionPool.js';
+import type { IConnectionPool } from '../pool/IConnectionPool.js';
 import { JsonRpcRequestSchema } from '../schema.js';
 import { BaseTransport, type TransportOptions } from './BaseTransport.js';
 import type { ITransport, TransportKind } from '../contracts/transport.js';
@@ -41,7 +41,7 @@ export interface SseTransportOptions extends TransportOptions {
 	 * When provided, each SSE client gets an isolated thought history.
 	 * When omitted, all clients share a single server instance (backward compatible).
 	 */
-	connectionPool?: ConnectionPool;
+	connectionPool?: IConnectionPool;
 }
 
 /**
@@ -70,7 +70,7 @@ export class SseTransport extends BaseTransport implements ITransport {
 	private _clientSessionMap: Map<ServerResponse, SessionId> = new Map();
 	private _messageQueue: Map<string, unknown[]> = new Map();
 	private _metrics?: IMetrics;
-	private _connectionPool?: ConnectionPool;
+	private _connectionPool?: IConnectionPool;
 
 	constructor(options: SseTransportOptions = {}) {
 		super(options);
@@ -438,7 +438,7 @@ export class SseTransport extends BaseTransport implements ITransport {
 	/**
 	 * Get the connection pool, if one was configured.
 	 */
-	get connectionPool(): ConnectionPool | undefined {
+	get connectionPool(): IConnectionPool | undefined {
 		return this._connectionPool;
 	}
 

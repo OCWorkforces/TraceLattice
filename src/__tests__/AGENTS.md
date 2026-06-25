@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-Vitest 4.1.x suite colocated under `src/__tests__/` (non-standard, kept inside `src/` for path alias parity). 86 test files; README/counts may lag actual glob results. Coverage gates (effective): branches 90%, functions 60%, lines 65%, statements 65%. Note: `vitest.config.ts` declares duplicate threshold keys; the second set overrides — these are the values CI enforces.
+Vitest 4.1.x suite colocated under `src/__tests__/` (non-standard, kept inside `src/` for path alias parity). Current full run: 2101 passing tests, 16 skipped. Coverage gates: branches 90%, functions 60%, lines 65%, statements 65%.
 
 ## STRUCTURE
 
@@ -17,6 +17,7 @@ core/reasoning/strategies/   TreeOfThought.newTypes
 strategies/      TreeOfThoughtStrategy (538L), totScoring, StrategyContract
 integration/     Cross-module flows
 compression/     CompressionAutoTrigger
+calibrator/      Calibrator regression suite: Beta(2,2), Brier, ECE, temperature scaling, ALL_THOUGHT_TYPES coverage
 eval/fixtures/   scenarios.ts (10 canonical eval scenarios)
 ```
 

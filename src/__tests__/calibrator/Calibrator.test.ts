@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { Calibrator } from '../../core/evaluator/Calibrator.js';
+import { ALL_THOUGHT_TYPES } from '../../core/evaluator/internals.js';
 import type {
 	IOutcomeRecorder,
 	VerificationOutcome,
@@ -76,7 +77,7 @@ describe('Calibrator — disabled mode', () => {
 		expect(m.brierScore).toBeNull();
 		expect(m.ece).toBeNull();
 		expect(m.sampleCount).toBe(0);
-		for (const t of ['regular', 'hypothesis', 'verification', 'critique', 'synthesis', 'meta'] as const) {
+		for (const t of ALL_THOUGHT_TYPES) {
 			expect(m.perTypeBrier[t]).toBeNull();
 		}
 	});
@@ -213,6 +214,14 @@ describe('Calibrator — Brier score and ECE', () => {
 		expect(m.perTypeBrier.critique).toBeNull();
 		expect(m.perTypeBrier.synthesis).toBeNull();
 		expect(m.perTypeBrier.meta).toBeNull();
+	});
+
+	it('perTypeBrier exposes every current ThoughtType key', () => {
+		const recorder = new MockOutcomeRecorder();
+		const calibrator = new Calibrator(recorder, true);
+		const m = calibrator.metrics(asSessionId('s1'));
+
+		expect(Object.keys(m.perTypeBrier).sort()).toEqual([...ALL_THOUGHT_TYPES].sort());
 	});
 });
 

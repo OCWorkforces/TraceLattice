@@ -30,30 +30,19 @@ import type { IOutcomeRecorder, VerificationOutcome } from '../../contracts/inte
 import type { ThoughtType } from '../reasoning.js';
 import type { SessionId } from '../../contracts/ids.js';
 import { GLOBAL_SESSION_ID } from '../../contracts/ids.js';
-
-const THOUGHT_TYPES: readonly ThoughtType[] = [
-	'regular',
-	'hypothesis',
-	'verification',
-	'critique',
-	'synthesis',
-	'meta',
-];
-
-/** Candidate temperatures evaluated during grid search refit. */
-const TEMPERATURE_GRID: readonly number[] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
-
-/** Minimum outcomes required before temperature scaling is applied. */
-const MIN_OUTCOMES_FOR_TEMPERATURE = 10;
+import {
+	EPSILON,
+	MIN_OUTCOMES_FOR_TEMPERATURE,
+	applyTemperature,
+	fitTemperature,
+} from './calibration-math.js';
+import { ALL_THOUGHT_TYPES } from './internals.js';
 
 /** Number of bins used by ECE (10-bin → 0.1 increments). */
 const ECE_BINS = 10;
 
 /** Sentinel used in the per-session temperature map for global state. */
 const GLOBAL_KEY: SessionId = GLOBAL_SESSION_ID;
-
-/** Small epsilon to keep log() finite when probabilities approach 0 or 1. */
-const EPSILON = 1e-9;
 
 /**
  * Build per-type empirical means + counts from a list of outcomes.
@@ -77,69 +66,6 @@ function aggregatePerType(
 		result.set(type, { mean: sum / count, count });
 	}
 	return result;
-}
-
-/**
- * Apply temperature scaling to a probability `p`.
- *
- * Uses the standard logit re-scaling:
- * `sigmoid(logit(p) / T)`. T=1 is the identity.
- *
- * @param p - Probability in `[0, 1]`.
- * @param temperature - Temperature scalar (must be > 0).
- * @returns Scaled probability in `[0, 1]`.
- */
-function applyTemperature(p: number, temperature: number): number {
-	const clamped = Math.min(1 - EPSILON, Math.max(EPSILON, p));
-	const logit = Math.log(clamped / (1 - clamped));
-	const scaled = logit / temperature;
-	return 1 / (1 + Math.exp(-scaled));
-}
-
-/**
- * Compute negative log-likelihood for a candidate temperature.
- *
- * @param outcomes - Outcomes whose `predicted` is the raw confidence and
- *                   `actual` is the observed 0/1 label.
- * @param temperature - Temperature to evaluate.
- * @returns Mean NLL across outcomes (lower is better). Returns `Infinity` if
- *          `outcomes` is empty.
- */
-function negativeLogLikelihood(
-	outcomes: readonly VerificationOutcome[],
-	temperature: number,
-): number {
-	if (outcomes.length === 0) return Number.POSITIVE_INFINITY;
-	let total = 0;
-	for (const o of outcomes) {
-		const p = applyTemperature(o.predicted, temperature);
-		const clamped = Math.min(1 - EPSILON, Math.max(EPSILON, p));
-		total += -(o.actual * Math.log(clamped) + (1 - o.actual) * Math.log(1 - clamped));
-	}
-	return total / outcomes.length;
-}
-
-/**
- * Grid-search the temperature minimizing NLL.
- *
- * Falls back to T=1.0 when there are fewer than {@link MIN_OUTCOMES_FOR_TEMPERATURE}
- * outcomes available.
- *
- * @param outcomes - Outcomes to fit against.
- * @returns Best temperature from {@link TEMPERATURE_GRID}.
- */
-function fitTemperature(outcomes: readonly VerificationOutcome[]): number {
-	if (outcomes.length < MIN_OUTCOMES_FOR_TEMPERATURE) return 1.0;
-	let best = 1.0;
-	let bestLoss = Number.POSITIVE_INFINITY;
-	for (const t of TEMPERATURE_GRID) {
-		const loss = negativeLogLikelihood(outcomes, t);
-		if (loss < bestLoss) {
-			bestLoss = loss;
-			best = t;
-		}
-	}
-	return best;
 }
 
 /**
@@ -209,7 +135,7 @@ function perTypeBrier(
 		buckets.set(o.type, list);
 	}
 	const result = {} as Record<ThoughtType, number | null>;
-	for (const t of THOUGHT_TYPES) {
+	for (const t of ALL_THOUGHT_TYPES) {
 		result[t] = brierScore(buckets.get(t) ?? []);
 	}
 	return result;
@@ -218,7 +144,7 @@ function perTypeBrier(
 /** Empty CalibrationMetrics returned when calibration is disabled. */
 function emptyMetrics(): CalibrationMetrics {
 	const perType = {} as Record<ThoughtType, number | null>;
-	for (const t of THOUGHT_TYPES) perType[t] = null;
+	for (const t of ALL_THOUGHT_TYPES) perType[t] = null;
 	return {
 		brierScore: null,
 		ece: null,

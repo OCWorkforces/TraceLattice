@@ -25,8 +25,14 @@ import {
 	SessionNotFoundError,
 } from '../errors.js';
 import type { Logger } from '../logger/StructuredLogger.js';
-import type { ConnectionPoolStats, IConnectionPool } from './IConnectionPool.js';
 import { asSessionId, type SessionId } from '../contracts/ids.js';
+import type {
+	ConnectionPoolStats,
+	IConnectionPool,
+	ProcessResult,
+	SessionInfo,
+	SessionServer,
+} from './IConnectionPool.js';
 
 export interface SessionOptions {
 	/**
@@ -59,29 +65,6 @@ export interface SessionOptions {
 	 * @default 60000 (1 minute)
 	 */
 	cleanupInterval?: number;
-}
-
-export interface SessionInfo {
-	id: SessionId;
-	server: SessionServer;
-	createdAt: number;
-	lastActivityAt: number;
-	isActive: boolean;
-}
-
-export interface SessionServer {
-	processThought(input: ThoughtData): Promise<ProcessResult>;
-	stop(): void | Promise<void>;
-}
-
-/**
- * Represents a content block in a process result.
- */
-export type ContentBlock = { type: 'text'; text: string };
-
-export interface ProcessResult {
-	content: ContentBlock[];
-	isError?: boolean;
 }
 
 /**
