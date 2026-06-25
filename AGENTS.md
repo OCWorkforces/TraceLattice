@@ -187,7 +187,7 @@ MCP Sequential Thinking Server — TypeScript/Node.js server providing structure
 
 - **CI**: `.github/workflows/ci.yml` — Node 22.x + 24.x matrix. Hard gates: type-check, test+coverage, build. Soft gates (continue-on-error): lint, audit.
 - **CD**: `.github/workflows/cd.yml` — main branch only; build + test, skip publish if version already exists, then npm publish with provenance, tag `v<version>`, GitHub release.
-- **Coverage**: Vitest config uses duplicate threshold keys; effective thresholds are branches 90%, functions 60%, lines 65%, statements 65%.
+- **Coverage**: Vitest thresholds are branches 90%, functions 60%, lines 65%, statements 65%.
 - **Test Helpers**: `src/__tests__/helpers/factories.ts` — `createTestThought()`, `MockHistoryManager`. `src/__tests__/helpers/timers.ts` — timer helpers.
 - **Large Files**: `ThoughtProcessor.ts` (851L), `errors.ts` (832L), `StreamableHttpTransport.ts` (729L), `schema.ts` (727L), `lib.ts` (677L), `HistoryManager.ts` (573L), `ServerConfig.ts` (517L), `SqlitePersistence.ts` (507L), `SseTransport.ts` (496L), `FilePersistence.ts` (482L), `ConfigLoader.ts` (480L), `metrics.impl.ts` (470L), `InputNormalizer.ts` (460L), `ConnectionPool.ts` (450L).
 - **Architectural Layers**: `.sentrux/rules.toml` — 9 layers (types→crosscutting→config→core→domain→infrastructure→di→app→cli), 6 forbidden boundaries.
