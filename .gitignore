@@ -219,3 +219,4 @@ skills-lock.json
 # CocoIndex Code (ccc)
 /.cocoindex_code/
 .opencode/
+.omo/
