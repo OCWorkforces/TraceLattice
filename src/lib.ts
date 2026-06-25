@@ -323,27 +323,9 @@ export class ToolAwareSequentialThinkingServer extends EventEmitter implements I
 		container.registerInstance('FileConfig', fileConfig || {});
 		container.registerInstance('Persistence', persistence);
 		container.registerInstance('Metrics', metrics);
-		container.register(
-			'ToolRegistry',
-			() =>
-				new ToolRegistry({
-					logger,
-					cache: config.discoveryCache
-						? new DiscoveryCache({ ...config.discoveryCache, metrics })
-						: undefined,
-				})
-		);
-		container.register(
-			'SkillRegistry',
-			() =>
-				new SkillRegistry({
-					logger,
-					cache: config.discoveryCache
-						? new DiscoveryCache({ ...config.discoveryCache, metrics })
-						: undefined,
-					skillDirs: config.skillDirs,
-					lazyDiscovery: options.lazyDiscovery,
-				})
+		ToolAwareSequentialThinkingServer._registerDiscoveryRegistries(
+			container,
+			options.lazyDiscovery,
 		);
 
 		// Register EdgeStore as a lazy singleton (always registered; flag gates writes)
@@ -383,6 +365,45 @@ export class ToolAwareSequentialThinkingServer extends EventEmitter implements I
 		// serializes ThoughtProcessor.process() per-session).
 		container.register('sessionLock', () => new SessionLock());
 
+		ToolAwareSequentialThinkingServer._registerHistoryManager(container);
+		ToolAwareSequentialThinkingServer._registerThoughtPipeline(container, config);
+
+		return container;
+	}
+
+	private static _registerDiscoveryRegistries(
+		container: Container,
+		lazyDiscovery: ServerOptions['lazyDiscovery']
+	): void {
+		const logger = container.resolve('Logger');
+		const config = container.resolve('Config');
+		const metrics = container.resolve('Metrics');
+
+		container.register(
+			'ToolRegistry',
+			() =>
+				new ToolRegistry({
+					logger,
+					cache: config.discoveryCache
+						? new DiscoveryCache({ ...config.discoveryCache, metrics })
+						: undefined,
+				})
+		);
+		container.register(
+			'SkillRegistry',
+			() =>
+				new SkillRegistry({
+					logger,
+					cache: config.discoveryCache
+						? new DiscoveryCache({ ...config.discoveryCache, metrics })
+						: undefined,
+					skillDirs: config.skillDirs,
+					lazyDiscovery,
+				})
+		);
+	}
+
+	private static _registerHistoryManager(container: Container): void {
 		// Register HistoryManager with lazy initialization
 		container.register('HistoryManager', () => {
 			const cfg = container.resolve('Config');
@@ -404,7 +425,9 @@ export class ToolAwareSequentialThinkingServer extends EventEmitter implements I
 				maxSessionsPerOwner: cfg.maxSessionsPerOwner,
 			});
 		});
+	}
 
+	private static _registerThoughtPipeline(container: Container, config: ServerConfig): void {
 		// Register ThoughtFormatter (can be transient)
 		container.registerFactory('ThoughtFormatter', () => new ThoughtFormatter());
 
@@ -458,8 +481,6 @@ export class ToolAwareSequentialThinkingServer extends EventEmitter implements I
 				sessionLock,
 			);
 		});
-
-		return container;
 	}
 
 
